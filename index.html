@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dziennik Tradera</title>
+<meta name="description" content="Osobisty dziennik tradera z kalendarzem i statystykami">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Dziennik">
+<link rel="manifest" href="manifest.json">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --bg2: #111;
+    --bg3: #161616;
+    --border: #1e1e1e;
+    --border2: #2a2a2a;
+    --text: #ccc;
+    --text2: #888;
+    --text3: #444;
+    --text4: #2a2a2a;
+    --green: #1D9E75;
+    --green-bg: #0a2e20;
+    --red: #E24B4A;
+    --red-bg: #2e0a0a;
+    --orange: #F4A020;
+    --font: 'Courier New', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 13px; }
+  
+  /* LAYOUT */
+  .app { max-width: 900px; margin: 0 auto; padding: 1rem; min-height: 100vh; }
+  
+  /* HEADER */
+  .hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 8px; }
+  .hdr-title { font-size: 12px; color: var(--text3); letter-spacing: 0.12em; text-transform: uppercase; }
+  .hdr-right { display: flex; gap: 8px; align-items: center; }
+  .hdr-user { font-size: 11px; color: var(--text3); }
+
+  /* BUTTONS */
+  .btn { font-family: var(--font); font-size: 11px; padding: 5px 12px; border: 0.5px solid var(--border2); border-radius: 6px; background: var(--bg2); color: var(--text2); cursor: pointer; }
+  .btn:hover { color: var(--text); border-color: #444; }
+  .btn-primary { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+  .btn-primary:hover { background: #0d3d28; }
+  .btn-danger { background: var(--red-bg); border-color: var(--red); color: var(--red); font-size: 11px; padding: 3px 8px; }
+
+  /* AUTH */
+  .auth-wrap { display: flex; align-items: center; justify-content: center; min-height: 80vh; }
+  .auth-card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 12px; padding: 2rem; width: 100%; max-width: 360px; text-align: center; }
+  .auth-title { font-size: 14px; color: var(--text); margin-bottom: 0.5rem; }
+  .auth-sub { font-size: 11px; color: var(--text3); margin-bottom: 1.5rem; line-height: 1.6; }
+  .auth-input { width: 100%; background: var(--bg3); border: 0.5px solid var(--border); border-radius: 6px; color: var(--text); font-family: var(--font); font-size: 12px; padding: 10px 12px; margin-bottom: 8px; outline: none; }
+  .auth-input:focus { border-color: var(--border2); }
+  .auth-input::placeholder { color: var(--text4); }
+  .auth-btn { width: 100%; padding: 10px; border-radius: 6px; border: none; background: var(--green); color: #000; font-family: var(--font); font-size: 12px; font-weight: bold; cursor: pointer; margin-top: 4px; }
+  .auth-btn:hover { background: #1ab882; }
+  .auth-link { font-size: 11px; color: var(--text3); margin-top: 12px; cursor: pointer; }
+  .auth-link span { color: var(--green); }
+  .auth-err { font-size: 11px; color: var(--red); margin-top: 8px; min-height: 16px; }
+
+  /* METRICS */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 1.25rem; }
+  @media(max-width:600px){ .metrics { grid-template-columns: repeat(2,1fr); } }
+  .metric { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .metric-label { font-size: 10px; color: var(--text3); margin-bottom: 3px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .metric-value { font-size: 18px; font-weight: bold; color: var(--text2); }
+  .pos { color: var(--green) !important; }
+  .neg { color: var(--red) !important; }
+
+  /* CALENDAR */
+  .cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  .cal-month { font-size: 14px; color: var(--text); font-weight: bold; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+  .cal-dow { text-align: center; font-size: 10px; color: var(--text4); padding: 4px 0; letter-spacing: 0.04em; }
+  .cal-day { background: var(--bg2); border: 0.5px solid var(--border); border-radius: 6px; min-height: 64px; padding: 5px; cursor: pointer; transition: border-color 0.15s; }
+  @media(max-width:600px){ .cal-day { min-height: 48px; padding: 3px; } }
+  .cal-day:hover { border-color: var(--border2); }
+  .cal-day.empty { background: var(--bg3); border-color: var(--border); cursor: default; opacity: 0.3; }
+  .cal-day.today { border-color: #333; }
+  .cal-day.selected { border-color: var(--green) !important; }
+  .cal-day.has-pos { border-left: 2px solid var(--green); }
+  .cal-day.has-neg { border-left: 2px solid var(--red); }
+  .cal-day-num { font-size: 10px; color: var(--text3); margin-bottom: 2px; }
+  .cal-day.today .cal-day-num { color: var(--text2); }
+  .cal-pnl { font-size: 11px; font-weight: bold; }
+  .cal-cnt { font-size: 9px; color: var(--text4); margin-top: 1px; }
+  .cal-summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 1rem; }
+  @media(max-width:600px){ .cal-summary { grid-template-columns: repeat(2,1fr); } }
+
+  /* DAY VIEW */
+  .day-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 8px; }
+  .day-title { font-size: 14px; color: var(--text); font-weight: bold; }
+  .section-title { font-size: 10px; color: var(--text4); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 0.5px solid var(--border); }
+  .form-grid { display: grid; grid-template-columns: 1fr 80px 90px 90px 90px auto; gap: 6px; align-items: end; margin-bottom: 6px; }
+  .form-grid2 { display: grid; grid-template-columns: 1fr 80px 1fr; gap: 6px; margin-bottom: 10px; }
+  @media(max-width:600px){
+    .form-grid { grid-template-columns: 1fr 1fr; }
+    .form-grid2 { grid-template-columns: 1fr 1fr; }
+  }
+  .form-group { display: flex; flex-direction: column; gap: 3px; }
+  .form-label { font-size: 10px; color: var(--text3); letter-spacing: 0.04em; }
+  input, select, textarea { font-family: var(--font); font-size: 12px; width: 100%; background: var(--bg2); border: 0.5px solid var(--border); border-radius: 6px; color: var(--text); padding: 0 8px; height: 32px; outline: none; }
+  input:focus, select:focus { border-color: var(--border2); }
+  input::placeholder { color: var(--text4); }
+  select option { background: var(--bg2); }
+  textarea { height: 60px; padding: 8px; resize: vertical; }
+  .btn-add { font-family: var(--font); font-size: 12px; height: 32px; padding: 0 14px; cursor: pointer; background: var(--bg3); border: 0.5px solid var(--border2); border-radius: 6px; color: var(--text2); white-space: nowrap; }
+  .btn-add:hover { color: var(--text); }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 560px; }
+  th { text-align: left; color: var(--text3); font-size: 10px; padding: 5px 6px; border-bottom: 0.5px solid var(--border); font-weight: normal; letter-spacing: 0.04em; }
+  td { padding: 7px 6px; border-bottom: 0.5px solid var(--bg3); color: var(--text2); vertical-align: middle; }
+  tr:hover td { background: var(--bg2); }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 10px; font-weight: bold; }
+  .bl { background: var(--green-bg); color: var(--green); }
+  .bs { background: var(--red-bg); color: var(--red); }
+  .bw { background: var(--green-bg); color: var(--green); }
+  .blo { background: var(--red-bg); color: var(--red); }
+  .tag { display: inline-block; background: var(--bg3); border: 0.5px solid var(--border); border-radius: 3px; padding: 1px 5px; font-size: 9px; color: var(--text3); }
+  .empty-row { text-align: center; padding: 20px; color: var(--text4); }
+
+  /* LOADER */
+  .loader { text-align: center; padding: 3rem; color: var(--text3); font-size: 12px; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--green); color: #000; padding: 8px 20px; border-radius: 20px; font-size: 12px; font-weight: bold; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+  .toast.err { background: var(--red); color: #fff; }
+
+  /* VIEWS */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* PWA install banner */
+  .install-banner { background: var(--bg2); border: 0.5px solid var(--border2); border-radius: 8px; padding: 10px 14px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text2); }
+  .install-banner.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <div class="loader" id="loader">Ładowanie...</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB4lmPQMRp0ME0Yz34ooaZn5dwp7P4w2E0",
+  authDomain: "trader-dziennik-8cd86.firebaseapp.com",
+  projectId: "trader-dziennik-8cd86",
+  storageBucket: "trader-dziennik-8cd86.firebasestorage.app",
+  messagingSenderId: "536822433591",
+  appId: "1:536822433591:web:04f619b8ac29715ed7bcb2",
+  databaseURL: "https://trader-dziennik-8cd86-default-rtdb.europe-west1.firebasedatabase.app"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getDatabase(firebaseApp);
+
+const MONTHS = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+const DOWS = ['Pn','Wt','Śr','Cz','Pt','Sb','Nd'];
+
+let currentUser = null;
+let viewYear, viewMonth;
+let selectedDay = null;
+let dayCache = {};
+let deferredPrompt = null;
+
+const now = new Date();
+viewYear = now.getFullYear();
+viewMonth = now.getMonth();
+
+// PWA install prompt
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+});
+
+function toast(msg, err=false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (err?' err':'') + ' show';
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function fmt(v) {
+  return (v >= 0 ? '+' : '') + v.toFixed(2).replace('.', ',') + ' zł';
+}
+
+function dateKey(y, m, d) {
+  return y + '-' + String(m+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+}
+
+function dbPath(dk) {
+  return 'users/' + currentUser.uid + '/days/' + dk;
+}
+
+async function loadDay(dk) {
+  if (dayCache[dk] !== undefined) return dayCache[dk];
+  try {
+    const snap = await get(ref(db, dbPath(dk)));
+    dayCache[dk] = snap.exists() ? snap.val() : { trades: [], notes: '' };
+  } catch(e) {
+    dayCache[dk] = { trades: [], notes: '' };
+  }
+  if (!dayCache[dk].trades) dayCache[dk].trades = [];
+  return dayCache[dk];
+}
+
+async function saveDay(dk) {
+  try {
+    await set(ref(db, dbPath(dk)), dayCache[dk]);
+  } catch(e) {
+    toast('Błąd zapisu!', true);
+  }
+}
+
+// ============ AUTH ============
+function renderAuth(mode='login') {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="auth-wrap">
+      <div class="auth-card">
+        <div class="auth-title">Dziennik Tradera</div>
+        <div class="auth-sub">${mode==='login' ? 'Zaloguj się do swojego konta' : 'Utwórz nowe konto'}</div>
+        <input class="auth-input" id="auth-email" type="email" placeholder="Email" autocomplete="email">
+        <input class="auth-input" id="auth-pass" type="password" placeholder="Hasło" autocomplete="${mode==='login'?'current-password':'new-password'}">
+        <button class="auth-btn" id="auth-submit">${mode==='login' ? 'Zaloguj się' : 'Zarejestruj się'}</button>
+        <div class="auth-err" id="auth-err"></div>
+        <div class="auth-link" id="auth-toggle">
+          ${mode==='login' ? 'Nie masz konta? <span>Zarejestruj się</span>' : 'Masz już konto? <span>Zaloguj się</span>'}
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('auth-submit').onclick = async () => {
+    const email = document.getElementById('auth-email').value.trim();
+    const pass = document.getElementById('auth-pass').value;
+    const errEl = document.getElementById('auth-err');
+    errEl.textContent = '';
+    try {
+      if (mode === 'login') {
+        await signInWithEmailAndPassword(auth, email, pass);
+      } else {
+        await createUserWithEmailAndPassword(auth, email, pass);
+      }
+    } catch(e) {
+      const msgs = {
+        'auth/invalid-email': 'Nieprawidłowy email',
+        'auth/user-not-found': 'Nie znaleziono konta',
+        'auth/wrong-password': 'Złe hasło',
+        'auth/email-already-in-use': 'Email już zajęty',
+        'auth/weak-password': 'Hasło za słabe (min. 6 znaków)',
+        'auth/invalid-credential': 'Zły email lub hasło',
+      };
+      errEl.textContent = msgs[e.code] || e.message;
+    }
+  };
+
+  document.getElementById('auth-pass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('auth-submit').click();
+  });
+
+  document.getElementById('auth-toggle').onclick = () => {
+    renderAuth(mode === 'login' ? 'register' : 'login');
+  };
+}
+
+// ============ MAIN APP ============
+function renderApp() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="hdr">
+      <span class="hdr-title">Dziennik Tradera</span>
+      <div class="hdr-right">
+        <span class="hdr-user" id="hdr-user"></span>
+        <button class="btn" id="btn-csv">CSV ↓</button>
+        <button class="btn" id="btn-install" style="display:none">Zainstaluj apkę</button>
+        <button class="btn" id="btn-logout">Wyloguj</button>
+      </div>
+    </div>
+
+    <div class="view active" id="view-cal">
+      <div class="cal-nav">
+        <button class="btn" id="btn-prev">‹ Poprzedni</button>
+        <span class="cal-month" id="cal-month"></span>
+        <button class="btn" id="btn-next">Następny ›</button>
+      </div>
+      <div class="cal-grid" id="cal-dows"></div>
+      <div class="cal-grid" style="margin-top:3px;gap:3px" id="cal-days"></div>
+      <div class="cal-summary" id="cal-summary"></div>
+    </div>
+
+    <div class="view" id="view-day">
+      <div class="day-hdr">
+        <span class="day-title" id="day-title"></span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" id="btn-back">← Kalendarz</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem;">
+        <div class="metric"><div class="metric-label">P&L dnia</div><div class="metric-value" id="d-pnl">0 zł</div></div>
+        <div class="metric"><div class="metric-label">Trafność</div><div class="metric-value" id="d-wr">—</div></div>
+        <div class="metric"><div class="metric-label">Transakcje</div><div class="metric-value" id="d-cnt">0</div></div>
+        <div class="metric"><div class="metric-label">Avg R:R</div><div class="metric-value" id="d-rr">—</div></div>
+      </div>
+
+      <div style="margin-bottom:1rem;">
+        <div class="section-title">Dodaj transakcję</div>
+        <div class="form-grid">
+          <div class="form-group"><span class="form-label">Instrument</span><input id="i-sym" placeholder="EURUSD"></div>
+          <div class="form-group"><span class="form-label">Kierunek</span><select id="i-dir"><option>LONG</option><option>SHORT</option></select></div>
+          <div class="form-group"><span class="form-label">Wejście</span><input type="number" id="i-en" placeholder="1.085" step="any"></div>
+          <div class="form-group"><span class="form-label">Wyjście</span><input type="number" id="i-ex" placeholder="1.092" step="any"></div>
+          <div class="form-group"><span class="form-label">P&L (zł)</span><input type="number" id="i-pnl" placeholder="150" step="any"></div>
+          <button class="btn-add" id="btn-add-trade">Dodaj ↵</button>
+        </div>
+        <div class="form-grid2">
+          <div class="form-group"><span class="form-label">Setup</span><input id="i-setup" placeholder="breakout, trend..."></div>
+          <div class="form-group"><span class="form-label">R:R</span><input type="number" id="i-rr" placeholder="2.5" step="0.1"></div>
+          <div class="form-group"><span class="form-label">Notatka</span><input id="i-note" placeholder="Opis decyzji..."></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-title">Transakcje</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Instr.</th><th>Kier.</th><th>Wejście</th><th>Wyjście</th><th>P&L</th><th>R:R</th><th>Setup</th><th>Notatka</th><th>Wynik</th><th></th></tr></thead>
+            <tbody id="d-trades"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="margin-top:1rem;">
+        <div class="section-title">Notatki dnia</div>
+        <textarea id="d-notes" placeholder="Nastrój rynku, błędy, plan na jutro..."></textarea>
+      </div>
+    </div>
+  `;
+
+  // User info
+  document.getElementById('hdr-user').textContent = currentUser.email.split('@')[0];
+
+  // Logout
+  document.getElementById('btn-logout').onclick = async () => {
+    await signOut(auth);
+  };
+
+  // Install PWA
+  const btnInstall = document.getElementById('btn-install');
+  if (deferredPrompt) btnInstall.style.display = '';
+  btnInstall.onclick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') { btnInstall.style.display = 'none'; deferredPrompt = null; }
+  };
+
+  // Nav
+  document.getElementById('btn-prev').onclick = () => { viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} dayCache={}; renderCal(); };
+  document.getElementById('btn-next').onclick = () => { viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} dayCache={}; renderCal(); };
+  document.getElementById('btn-back').onclick = () => { showView('cal'); renderCal(); };
+  document.getElementById('btn-add-trade').onclick = addTrade;
+  document.getElementById('btn-csv').onclick = exportCSV;
+
+  document.getElementById('i-pnl').addEventListener('keydown', e => { if(e.key==='Enter') addTrade(); });
+
+  renderCal();
+}
+
+// ============ CALENDAR ============
+async function renderCal() {
+  showView('cal');
+  document.getElementById('cal-month').textContent = MONTHS[viewMonth] + ' ' + viewYear;
+
+  const dowEl = document.getElementById('cal-dows');
+  dowEl.innerHTML = DOWS.map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const offset = firstDay === 0 ? 6 : firstDay - 1;
+
+  // preload all days
+  const keys = Array.from({length: daysInMonth}, (_,i) => dateKey(viewYear, viewMonth, i+1));
+  await Promise.all(keys.map(k => loadDay(k)));
+
+  const daysEl = document.getElementById('cal-days');
+  let html = '';
+  for(let i=0; i<offset; i++) html += '<div class="cal-day empty"></div>';
+
+  let mPnl=0, mTrades=0, mWins=0, mDays=0;
+
+  for(let d=1; d<=daysInMonth; d++) {
+    const dk = dateKey(viewYear, viewMonth, d);
+    const data = dayCache[dk] || {trades:[]};
+    const pnl = (data.trades||[]).reduce((s,t)=>s+t.pnl,0);
+    const cnt = (data.trades||[]).length;
+    const wins = (data.trades||[]).filter(t=>t.pnl>0).length;
+    mPnl+=pnl; mTrades+=cnt; mWins+=wins;
+    if(cnt>0) mDays++;
+
+    const isToday = d===now.getDate() && viewMonth===now.getMonth() && viewYear===now.getFullYear();
+    const isSel = selectedDay===dk;
+    let cls = 'cal-day';
+    if(isToday) cls+=' today';
+    if(isSel) cls+=' selected';
+    if(cnt>0) cls += pnl>=0 ? ' has-pos' : ' has-neg';
+
+    html += `<div class="${cls}" onclick="openDay('${dk}',${d})">
+      <div class="cal-day-num">${d}</div>
+      ${cnt>0 ? `<div class="cal-pnl ${pnl>=0?'pos':'neg'}">${fmt(pnl)}</div><div class="cal-cnt">${cnt} tr.</div>` : ''}
+    </div>`;
+  }
+  daysEl.innerHTML = html;
+
+  const wr = mTrades ? Math.round(mWins/mTrades*100) : null;
+  document.getElementById('cal-summary').innerHTML = `
+    <div class="metric"><div class="metric-label">Mies. P&L</div><div class="metric-value ${mPnl>0?'pos':mPnl<0?'neg':''}">${fmt(mPnl)}</div></div>
+    <div class="metric"><div class="metric-label">Trafność</div><div class="metric-value ${wr===null?'':wr>=50?'pos':'neg'}">${wr!==null?wr+' %':'—'}</div></div>
+    <div class="metric"><div class="metric-label">Transakcje</div><div class="metric-value">${mTrades}</div></div>
+    <div class="metric"><div class="metric-label">Aktywne dni</div><div class="metric-value">${mDays}</div></div>
+  `;
+}
+
+// ============ DAY VIEW ============
+window.openDay = async function(dk, d) {
+  selectedDay = dk;
+  await loadDay(dk);
+  showView('day');
+
+  const [y,m] = dk.split('-');
+  document.getElementById('day-title').textContent = d + ' ' + MONTHS[parseInt(m)-1] + ' ' + y;
+  document.getElementById('d-notes').value = dayCache[dk].notes || '';
+  document.getElementById('d-notes').oninput = () => {
+    dayCache[dk].notes = document.getElementById('d-notes').value;
+    saveDay(dk);
+  };
+
+  renderDayMetrics();
+  renderDayTable();
+};
+
+function renderDayMetrics() {
+  const dk = selectedDay;
+  const trades = (dayCache[dk]||{trades:[]}).trades||[];
+  const pnl = trades.reduce((s,t)=>s+t.pnl,0);
+  const wins = trades.filter(t=>t.pnl>0).length;
+  const wr = trades.length ? Math.round(wins/trades.length*100) : null;
+  const rrs = trades.filter(t=>t.rr).map(t=>t.rr);
+  const avgRR = rrs.length ? (rrs.reduce((a,b)=>a+b,0)/rrs.length).toFixed(1) : null;
+
+  const pe = document.getElementById('d-pnl');
+  pe.textContent = fmt(pnl);
+  pe.className = 'metric-value '+(pnl>0?'pos':pnl<0?'neg':'');
+  const we = document.getElementById('d-wr');
+  we.textContent = wr!==null?wr+' %':'—';
+  we.className = 'metric-value '+(wr===null?'':wr>=50?'pos':'neg');
+  document.getElementById('d-cnt').textContent = trades.length;
+  document.getElementById('d-rr').textContent = avgRR??'—';
+}
+
+function renderDayTable() {
+  const dk = selectedDay;
+  const trades = (dayCache[dk]||{trades:[]}).trades||[];
+  const tbody = document.getElementById('d-trades');
+  if(!trades.length) { tbody.innerHTML='<tr><td colspan="11" class="empty-row">Brak transakcji — dodaj pierwszą powyżej</td></tr>'; return; }
+  tbody.innerHTML = trades.map((t,i)=>`<tr>
+    <td style="color:var(--text4)">${i+1}</td>
+    <td style="font-weight:bold;color:var(--text)">${t.symbol}</td>
+    <td><span class="badge ${t.dir==='LONG'?'bl':'bs'}">${t.dir}</span></td>
+    <td>${t.entry??'—'}</td><td>${t.exit??'—'}</td>
+    <td class="${t.pnl>=0?'pos':'neg'}" style="font-weight:bold">${fmt(t.pnl)}</td>
+    <td>${t.rr!==null?t.rr+'R':'—'}</td>
+    <td>${t.setup?'<span class="tag">'+t.setup+'</span>':'—'}</td>
+    <td style="color:var(--text3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.note||'—'}</td>
+    <td><span class="badge ${t.pnl>=0?'bw':'blo'}">${t.pnl>=0?'WIN':'LOSS'}</span></td>
+    <td><button class="btn-danger" onclick="removeTrade(${t.id})">×</button></td>
+  </tr>`).join('');
+}
+
+function addTrade() {
+  const dk = selectedDay;
+  const sym = document.getElementById('i-sym').value.trim().toUpperCase();
+  if(!sym){ document.getElementById('i-sym').focus(); return; }
+  const pnl = parseFloat(document.getElementById('i-pnl').value);
+  if(isNaN(pnl)){ document.getElementById('i-pnl').focus(); return; }
+  const en = parseFloat(document.getElementById('i-en').value);
+  const ex = parseFloat(document.getElementById('i-ex').value);
+  const rr = parseFloat(document.getElementById('i-rr').value);
+  if(!dayCache[dk]) dayCache[dk]={trades:[],notes:''};
+  if(!dayCache[dk].trades) dayCache[dk].trades=[];
+  dayCache[dk].trades.push({
+    id: Date.now(), symbol:sym, dir:document.getElementById('i-dir').value,
+    entry:isNaN(en)?null:en, exit:isNaN(ex)?null:ex, pnl,
+    rr:isNaN(rr)?null:rr,
+    setup:document.getElementById('i-setup').value.trim(),
+    note:document.getElementById('i-note').value.trim()
+  });
+  ['i-sym','i-en','i-ex','i-pnl','i-rr','i-setup','i-note'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('i-sym').focus();
+  saveDay(dk); renderDayMetrics(); renderDayTable();
+  toast('Transakcja dodana');
+}
+
+window.removeTrade = function(id) {
+  const dk = selectedDay;
+  dayCache[dk].trades = dayCache[dk].trades.filter(t=>t.id!==id);
+  saveDay(dk); renderDayMetrics(); renderDayTable();
+};
+
+async function exportCSV() {
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+  const all = [];
+  for(let d=1; d<=daysInMonth; d++) {
+    const dk = dateKey(viewYear, viewMonth, d);
+    await loadDay(dk);
+    (dayCache[dk]?.trades||[]).forEach(t=>all.push({...t,date:dk}));
+  }
+  if(!all.length){ toast('Brak transakcji w tym miesiącu', true); return; }
+  const hdr = ['Data','Instrument','Kierunek','Wejście','Wyjście','P&L (zł)','R:R','Setup','Notatka','Wynik'];
+  const rows = all.map(t=>[t.date,t.symbol,t.dir,t.entry??'',t.exit??'',t.pnl.toFixed(2),t.rr??'',t.setup||'','"'+(t.note||'').replace(/"/g,'""')+'"',t.pnl>=0?'WIN':'LOSS']);
+  const total = all.reduce((s,t)=>s+t.pnl,0);
+  const wr = all.length?Math.round(all.filter(t=>t.pnl>0).length/all.length*100):0;
+  let csv='\uFEFF'+MONTHS[viewMonth]+' '+viewYear+'\nŁączny P&L:,'+total.toFixed(2)+' zł\nTrafność:,'+wr+'%\nTransakcje:,'+all.length+'\n\n';
+  csv+=hdr.join(',')+'\n'+rows.map(r=>r.join(',')).join('\n');
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})),download:'dziennik_'+viewYear+'-'+String(viewMonth+1).padStart(2,'0')+'.csv'});
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  toast('CSV pobrany — '+MONTHS[viewMonth]+' '+viewYear);
+}
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+}
+
+// ============ AUTH STATE ============
+onAuthStateChanged(auth, user => {
+  document.getElementById('loader').style.display = 'none';
+  if(user) {
+    currentUser = user;
+    dayCache = {};
+    renderApp();
+  } else {
+    currentUser = null;
+    renderAuth('login');
+  }
+});
+
+// Register service worker for PWA
+if('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
